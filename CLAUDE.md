@@ -1,0 +1,75 @@
+# CLAUDE.md
+
+Guidance for Claude Code (and any future contributor) working in this repository.
+
+## What this repo is
+
+Implementation of the "Live Alerts over TCP and WebSocket" exercise: an emulator sends TCP
+messages to a Java server, the server stores them in MSSQL and pushes alerts over WebSocket to a
+React client, which reads message data through the server's REST API.
+
+- Full requirements: [`Developer_Exercise.md`](Developer_Exercise.md)
+- Build plan, scope per area, and open/resolved design decisions: [`PLAN.md`](PLAN.md)
+- User-facing docs (architecture diagram, protocol spec, run instructions): `README.md`
+  (written once behavior stabilizes — see PLAN.md section 7)
+
+## Repository layout
+
+```
+server/      Java TCP server + REST API + WebSocket broadcaster + MSSQL persistence (Maven)
+emulator/    Java TCP client: manual + periodic message sending (Maven)
+client/      React web app: WebSocket alerts + REST reads
+docker-compose.yml   Orchestrates mssql, server, emulator, client
+claude-sessions/     Exported Claude Code session transcripts (required deliverable)
+```
+
+## Tech stack decisions (see PLAN.md §8 for the full list and rationale)
+
+- **Server & Emulator:** Java, built with **Maven**.
+- **MSSQL:** official `mcr.microsoft.com/mssql/server` Linux image; schema created
+  automatically on startup — no manual DB setup steps.
+- **Client:** React (build tool: see PLAN.md §8, currently leaning Vite).
+- **Orchestration:** Docker Compose, four services (`mssql`, `server`, `emulator`, `client`),
+  reachable as a whole at `http://localhost`.
+- **TCP framing:** newline-delimited JSON. Message types at minimum: `Connect`, `Disconnect`,
+  `SendMessage` (plus server→client `Ack`/`Error` for malformed input). Exact schema is
+  finalized during Server implementation and documented in `README.md`.
+
+## Conventions
+
+- **Env vars**, not hardcoded config, for anything that differs between local/dev/docker
+  (ports, hosts, DB credentials, emulator interval). Keep naming consistent across services
+  (e.g. `DB_HOST`, `DB_PORT`, `SERVER_HOST`, `SERVER_TCP_PORT`).
+- **No premature abstractions.** This is a 3-day-scoped exercise — prefer straightforward code
+  over frameworks-within-frameworks; add structure only where the exercise's requirements
+  (robustness, reconnects, tests) actually need it.
+- **Robustness is a first-class requirement**, not an afterthought: malformed JSON on the TCP
+  socket, abrupt client disconnects, and server restarts must never require a manual recovery
+  step anywhere in the system (emulator, server, or browser).
+
+## Git workflow (agreed with the repo owner)
+
+- Remote: `https://github.com/Davidn0072/tomer-br-on-java-live-alerts`
+- Commits are scoped to one logical unit of work (roughly matching the build order in
+  `PLAN.md` §7 — e.g. "protocol DTOs + framing", "TCP server", "REST API", "emulator reconnect
+  logic").
+- **Every commit is proposed (message + file list) and requires explicit approval before it's
+  made.** No autonomous committing.
+- **Every push is confirmed separately from the commit that precedes it.**
+- Commit messages end with the required Claude Code attribution trailer.
+
+## How to run (fill in as each piece lands)
+
+- `docker compose up` — starts the full stack. *(Currently: `mssql` is functional; `server`,
+  `emulator`, `client` are placeholder containers until implemented — see PLAN.md §7.)*
+- Test suites (Java/JUnit, React/Vitest, Playwright E2E): commands to be added here once each
+  suite exists.
+
+## Required deliverables checklist (from `Developer_Exercise.md`)
+
+- [x] `PLAN.md` — work plan
+- [x] `CLAUDE.md` — this file
+- [ ] `claude-sessions/` — 2–3 exported session transcripts (add near the end of the exercise)
+- [ ] `README.md` — use cases, architecture diagram, run/test instructions, protocol spec,
+      design decisions
+- [ ] Working `docker compose up` from a clean clone

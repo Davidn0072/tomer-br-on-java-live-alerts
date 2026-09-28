@@ -1,0 +1,70 @@
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: live-alerts-mssql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "LiveAlerts!2026"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - live-alerts-net
+
+  # Placeholder container until the Java server (Maven) is implemented — see PLAN.md §3.
+  server:
+    build:
+      context: ./server
+    container_name: live-alerts-server
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mssql
+      DB_PORT: "1433"
+      DB_NAME: LiveAlerts
+      DB_USER: sa
+      DB_PASSWORD: "LiveAlerts!2026"
+      TCP_PORT: "5000"
+      HTTP_PORT: "8080"
+    ports:
+      - "5000:5000"
+      - "8080:8080"
+    networks:
+      - live-alerts-net
+
+  # Placeholder container until the emulator (Maven) is implemented — see PLAN.md §2.
+  emulator:
+    build:
+      context: ./emulator
+    container_name: live-alerts-emulator
+    depends_on:
+      - server
+    environment:
+      SERVER_HOST: server
+      SERVER_TCP_PORT: "5000"
+      EMULATOR_INTERVAL_MS: "10000"
+    networks:
+      - live-alerts-net
+
+  # Placeholder container until the React client is implemented — see PLAN.md §4.
+  client:
+    build:
+      context: ./client
+    container_name: live-alerts-client
+    depends_on:
+      - server
+    ports:
+      - "80:80"
+    networks:
+      - live-alerts-net
+
+networks:
+  live-alerts-net:
+    driver: bridge
