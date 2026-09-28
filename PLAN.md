@@ -250,8 +250,19 @@ single `docker compose up`.
 
 ## 8. Open decisions to make before/at the start of implementation
 
-- ~~Build tool~~ **Decided: Maven** for Server + Emulator. Still open: Spring Boot vs. plain
-  Java, and MSSQL access layer (JPA/Hibernate vs. JDBC vs. jOOQ).
+- ~~Build tool~~ **Decided: Maven** for Server + Emulator, targeting **Java 17** (LTS, matches
+  the local JDK and `eclipse-temurin:17-jre-alpine`).
+- ~~Server framework~~ **Decided: Spring Boot 3.3.x** (`web`, `websocket`, `data-jpa` starters)
+  — the REST + WebSocket + JPA/MSSQL combination is exactly Spring Boot's sweet spot, and it
+  keeps each area (REST controller, WS broadcaster, JPA repository) small. MSSQL access layer:
+  Spring Data JPA/Hibernate (still to be wired up when persistence is implemented).
+- ~~TCP protocol shape~~ **Decided:** `ProtocolMessage` sealed interface with Jackson
+  polymorphic deserialization on an `EXISTING_PROPERTY` `type` discriminator; concrete records
+  `ConnectMessage`, `DisconnectMessage`, `SendMessageMessage`, `AckMessage`, `ErrorMessage` in
+  `server/src/main/java/com/livealerts/server/protocol/`, with `MessageCodec` doing the
+  newline-delimited encode/decode and throwing a checked `MalformedMessageException` on bad
+  input (see `MessageCodecTest` for the 12 cases covered: round-trips, blank/null/invalid JSON,
+  missing/unknown `type`, JSON array instead of object).
 - Client build tool (Vite) and WS client approach (native `WebSocket` vs. a library).
 - Exact JSON protocol schema and framing edge cases (max message size, encoding).
 - How the emulator's "manual trigger" is exposed for E2E control.

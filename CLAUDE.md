@@ -25,7 +25,8 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 ## Tech stack decisions (see PLAN.md §8 for the full list and rationale)
 
-- **Server & Emulator:** Java, built with **Maven**.
+- **Server & Emulator:** Java 17, built with **Maven**.
+- **Server framework:** **Spring Boot 3.3.x** (`web`, `websocket`, `data-jpa` starters).
 - **MSSQL:** official `mcr.microsoft.com/mssql/server` Linux image; schema created
   automatically on startup — no manual DB setup steps.
 - **Client:** React (build tool: see PLAN.md §8, currently leaning Vite).
