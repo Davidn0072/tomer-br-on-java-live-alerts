@@ -263,9 +263,16 @@ single `docker compose up`.
   newline-delimited encode/decode and throwing a checked `MalformedMessageException` on bad
   input (see `MessageCodecTest` for the 12 cases covered: round-trips, blank/null/invalid JSON,
   missing/unknown `type`, JSON array instead of object).
+- ~~Schema migration approach~~ **Decided: Hibernate `ddl-auto: update`** (not Flyway/
+  Liquibase) — a single-table schema doesn't warrant a migration tool for this exercise, and
+  `update` never drops data, so messages survive a server restart. Verified end-to-end against
+  a real MSSQL instance: `StoredMessage` (`server/.../storage/`) + `MessageRepository` +
+  `PersistingMessageReceivedListener` (wired to `TcpServer` via `MessageReceivedListener`), with
+  `MessageRepositoryIT` (Testcontainers, real MSSQL, run via `mvn verify`) as the required MSSQL
+  integration test. The server's own MSSQL-readiness wait is skipped: `docker-compose.yml`
+  already gates `server` on `mssql`'s `service_healthy` condition, so no in-app retry loop is
+  needed.
 - Client build tool (Vite) and WS client approach (native `WebSocket` vs. a library).
 - Exact JSON protocol schema and framing edge cases (max message size, encoding).
 - How the emulator's "manual trigger" is exposed for E2E control.
 - Reverse proxy vs. direct port exposure for reaching the client/server at `http://localhost`.
-- Schema migration approach (Hibernate `ddl-auto` vs. Flyway/Liquibase) for "created
-  automatically on first start."

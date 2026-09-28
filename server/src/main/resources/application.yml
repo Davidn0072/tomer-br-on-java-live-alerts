@@ -4,3 +4,17 @@ app:
 
 server:
   port: ${HTTP_PORT:8080}
+
+spring:
+  datasource:
+    url: jdbc:sqlserver://${DB_HOST:localhost}:${DB_PORT:1433};databaseName=${DB_NAME:LiveAlerts};encrypt=true;trustServerCertificate=true
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:LiveAlerts!2026}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Auto-creates/updates the schema on startup ("created automatically on first start") and
+      # never drops data, so messages survive a server restart. A single-table schema doesn't
+      # warrant a migration tool (Flyway/Liquibase) for this exercise.
+      ddl-auto: update

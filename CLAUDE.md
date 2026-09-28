@@ -63,8 +63,16 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 - `docker compose up` — starts the full stack. *(Currently: `mssql` is functional; `server`,
   `emulator`, `client` are placeholder containers until implemented — see PLAN.md §7.)*
-- Test suites (Java/JUnit, React/Vitest, Playwright E2E): commands to be added here once each
-  suite exists.
+- `cd server && mvn test` — fast JUnit unit tests (protocol codec, TCP server over real
+  sockets). No Docker/DB required.
+- `cd server && mvn verify` — unit tests plus `MessageRepositoryIT`, the required MSSQL
+  integration test (Testcontainers spins up a real `mssql` image). Requires a working Docker
+  daemon. **Windows/Docker Desktop note:** Testcontainers 1.20.x fails to detect Docker Desktop
+  29.x over the Windows named pipe (`BadRequestException`/"Could not find a valid Docker
+  environment", even though `docker` and `docker compose` work fine); Testcontainers **1.21.4**
+  resolved it — keep `testcontainers.version` in `server/pom.xml` at or above that if bumping
+  Docker Desktop causes this again.
+- React/Vitest, Playwright E2E: commands to be added here once each suite exists.
 
 ## Required deliverables checklist (from `Developer_Exercise.md`)
 
