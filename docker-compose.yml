@@ -17,7 +17,6 @@ services:
     networks:
       - live-alerts-net
 
-  # Placeholder container until the Java server (Maven) is implemented — see PLAN.md §3.
   server:
     build:
       context: ./server

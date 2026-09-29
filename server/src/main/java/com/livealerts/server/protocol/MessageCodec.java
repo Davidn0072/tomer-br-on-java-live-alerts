@@ -2,12 +2,17 @@ package com.livealerts.server.protocol;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
 /**
  * (De)serializes {@link ProtocolMessage}s to and from the newline-delimited JSON wire format:
  * one JSON object per line, terminated by {@code \n}. A line is read/written whole; this class
- * does not itself read from or write to a socket.
+ * does not itself read from or write to a socket. {@code @Component} so Spring can inject it
+ * into {@link com.livealerts.server.tcp.TcpServer}; it's also plain enough to instantiate
+ * directly outside a Spring context (see the protocol/tcp tests, and the Emulator, which has
+ * no Spring context at all).
  */
+@Component
 public final class MessageCodec {
 
     private final ObjectMapper mapper = new ObjectMapper();

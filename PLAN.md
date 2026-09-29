@@ -79,10 +79,28 @@ a small shared module or duplicated POJOs — decide during implementation).
 
 ---
 
-## 3. Server
+## 3. Server — DONE (implementation; README still pending, see §7)
 
 Java application (Spring Boot is the natural fit for REST + WebSocket + MSSQL integration, but
 confirm version/build tool — Maven vs Gradle — before scaffolding).
+
+Verified end-to-end via a real `docker compose up -d mssql server` run (not just unit tests):
+raw TCP `Connect`/`SendMessage` → `Ack` replies → row in MSSQL → visible via `GET
+/api/messages` → a WebSocket client connected to `/ws/alerts` receives
+`{"type":"NewMessage","id":...,"receivedAt":...}` the moment the message is persisted. That run
+surfaced two bugs unit tests couldn't catch (both fixed, see `server/src/main/java/com/livealerts/server/`):
+1. **The MSSQL image doesn't auto-create an app database** the way Postgres's `POSTGRES_DB`
+   does — only `master` exists on first start. Fixed with `EnsureDatabaseExistsListener`, an
+   `ApplicationListener<ApplicationEnvironmentPreparedEvent>` that creates the database (if
+   missing) before Spring's JPA datasource connects.
+2. **`MessageCodec` was never `@Component`-annotated**, so `TcpServer` (which Spring
+   constructor-injects it into) failed to start under a real `SpringApplication.run()`. Every
+   test up to that point either `new MessageCodec()`'d it directly or used a Spring test slice
+   that never scanned the `tcp` package, so nothing caught it until the full app actually booted.
+
+**Lesson for this project:** unit tests and slice tests (`@WebMvcTest`, `@DataJpaTest`) don't
+prove the full Spring context wires together — run the real container at least once after
+finishing a component.
 
 **Components:**
 - **TCP server** — listens on a configurable port, accepts multiple concurrent client

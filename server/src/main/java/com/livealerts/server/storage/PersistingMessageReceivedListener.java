@@ -15,9 +15,11 @@ class PersistingMessageReceivedListener implements MessageReceivedListener {
     private static final Logger log = LoggerFactory.getLogger(PersistingMessageReceivedListener.class);
 
     private final MessageRepository repository;
+    private final MessagePersistedListener persistedListener;
 
-    PersistingMessageReceivedListener(MessageRepository repository) {
+    PersistingMessageReceivedListener(MessageRepository repository, MessagePersistedListener persistedListener) {
         this.repository = repository;
+        this.persistedListener = persistedListener;
     }
 
     @Override
@@ -25,5 +27,6 @@ class PersistingMessageReceivedListener implements MessageReceivedListener {
         StoredMessage saved = repository.save(
                 new StoredMessage(message.clientId(), message.text(), Instant.now()));
         log.debug("Persisted message id={} from {}", saved.getId(), saved.getClientId());
+        persistedListener.onMessagePersisted(saved);
     }
 }

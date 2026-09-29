@@ -1,3 +1,19 @@
-# Placeholder until the Java server (Maven) is implemented — see /PLAN.md section 3.
+# ---- Build stage ----
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /build
+COPY pom.xml .
+RUN mvn -q dependency:go-offline
+COPY src ./src
+RUN mvn -q -DskipTests package
+
+# ---- Runtime stage ----
 FROM eclipse-temurin:17-jre-alpine
-CMD ["sh", "-c", "echo 'server not implemented yet'; sleep infinity"]
+WORKDIR /app
+COPY --from=build /build/target/server-*.jar app.jar
+
+EXPOSE 5000 8080
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
+    CMD wget -qO- http://localhost:8080/api/health || exit 1
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

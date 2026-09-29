@@ -7,6 +7,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class ServerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ServerApplication.class, args);
+        SpringApplication app = new SpringApplication(ServerApplication.class);
+        app.addListeners(new EnsureDatabaseExistsListener());
+        app.run(args);
     }
 }

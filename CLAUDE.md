@@ -61,8 +61,15 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 ## How to run (fill in as each piece lands)
 
-- `docker compose up` — starts the full stack. *(Currently: `mssql` is functional; `server`,
-  `emulator`, `client` are placeholder containers until implemented — see PLAN.md §7.)*
+- `docker compose up` — starts the full stack. *(Currently: `mssql` and `server` are fully
+  functional and verified end-to-end — TCP → MSSQL → REST → WebSocket alert, all working
+  together in real containers. `emulator` and `client` are still placeholder containers — see
+  PLAN.md §7.)*
+- **Always smoke-test a finished component with the real `docker compose up`**, not just `mvn
+  test`/`mvn verify`. Two Server bugs only surfaced this way: MSSQL's official image doesn't
+  auto-create an app database (only `master` exists on first start), and `MessageCodec` was
+  missing `@Component` so the full Spring context failed to boot — neither was catchable by
+  unit tests or Spring test slices (`@WebMvcTest`, `@DataJpaTest`) alone. See PLAN.md §3.
 - `cd server && mvn test` — fast JUnit unit tests (protocol codec, TCP server over real
   sockets). No Docker/DB required.
 - `cd server && mvn verify` — unit tests plus `MessageRepositoryIT`, the required MSSQL
