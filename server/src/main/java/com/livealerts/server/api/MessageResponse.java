@@ -1,0 +1,13 @@
+package com.livealerts.server.api;
+
+import com.livealerts.server.storage.StoredMessage;
+
+import java.time.Instant;
+
+/** What the REST API returns for one stored message. */
+public record MessageResponse(Long id, String clientId, String text, Instant receivedAt) {
+
+    static MessageResponse from(StoredMessage message) {
+        return new MessageResponse(message.getId(), message.getClientId(), message.getText(), message.getReceivedAt());
+    }
+}
