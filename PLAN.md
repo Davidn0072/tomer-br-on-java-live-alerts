@@ -165,23 +165,40 @@ finishing a component.
 
 ---
 
-## 4. Client
+## 4. Client — DONE (implementation; README still pending, see §7)
 
-React web application (build tooling: Vite recommended for speed; confirm during setup).
+React web application, **Vite + TypeScript**. **WS client: native browser `WebSocket`**, not a
+library — the server is a plain Spring `TextWebSocketHandler`, not Socket.IO/STOMP, so a raw
+client is the correct match, not an extra dependency.
 
-**Components:**
-- **WebSocket connection module** — connects to the server's WS endpoint on load, with
-  auto-reconnect (backoff) so it recovers after a server restart with no manual steps (e.g.
-  browser refresh not required).
-- **REST data layer** — fetch/axios wrapper for `GET /api/messages` and `GET /api/messages/{id}`.
-- **Alert/notification UI** — shows a live, transient alert when a WS message arrives (e.g. a
-  toast or banner), triggering a REST fetch for the details.
-- **Message list view** — displays stored messages fetched via REST, refreshed when new alerts
-  arrive.
-- **Connection status indicator** (nice-to-have) — shows WS connected/reconnecting state, useful
-  for manual verification and possibly for E2E assertions.
-- **Config** — server REST/WS base URL via build-time or runtime env variable (must work both
-  in local dev and behind the docker-compose network/reverse proxy at `http://localhost`).
+**Decided: no build-time/runtime API base URL at all.** The client calls relative paths
+(`/api/messages`, `/ws/alerts`) exclusively. In docker-compose, nginx (serving the built static
+files) reverse-proxies `/api/*` and `/ws/*` to the `server` service — see §6 and
+`client/nginx.conf`. In local `npm run dev`, Vite's own dev-server proxy does the same against
+`http://localhost:8080` (`client/vite.config.ts`). Same-origin either way: no CORS
+configuration needed anywhere, and this also resolves §8's "reverse proxy vs. direct port"
+question for the whole system, not just the client.
+
+**Components (all implemented, `client/src/`):**
+- `hooks/useAlertSocket.ts` — connects on mount, exposes `connecting | open | reconnecting`
+  status, reconnects on a fixed 3s delay after any drop (mirrors the emulator's own cadence) —
+  no manual browser refresh needed after a server restart.
+- `api/messages.ts` — `fetchMessages()` / `fetchMessageById(id)`.
+- `components/AlertToast.tsx` — shown when a WS alert arrives (after fetching the full message
+  via REST — the WS payload itself carries no body); auto-dismisses after 6s or on click.
+- `components/MessageList.tsx` — renders `clientId` / `text` / `receivedAt`, newest first.
+- `components/ConnectionStatus.tsx` — the "nice-to-have" indicator from the original plan;
+  built after all, since it doubles as a way to see reconnect state during manual testing.
+- `App.tsx` — wires the above: loads the initial list via REST, and on each WS alert fetches
+  that one message and prepends it (no full-list refetch).
+
+Verified end-to-end through the real `docker compose` stack (all four containers, through
+nginx at `http://localhost`, not just against the server directly): static assets serve,
+`GET /api/messages` proxies correctly, and a raw WebSocket client connecting to
+`ws://localhost/ws/alerts` receives the live alert the moment the emulator's message lands —
+confirming the reverse-proxy config work for both HTTP and the WS upgrade. Not yet verified in
+an actual browser (no browser-automation tool was available in this session) — Playwright E2E
+(§5) will be the first real-browser check.
 
 **Dependencies:**
 - Needs the **Server**'s REST/WS contracts defined (can start against a mocked/stubbed server
@@ -317,6 +334,11 @@ single `docker compose up`.
   needed.
 - ~~Manual trigger~~ **Decided: `POST /trigger` on a JDK `HttpServer`** inside the emulator —
   see §2.
-- Client build tool (Vite) and WS client approach (native `WebSocket` vs. a library).
-- Exact JSON protocol schema and framing edge cases (max message size, encoding).
-- Reverse proxy vs. direct port exposure for reaching the client/server at `http://localhost`.
+- ~~Client build tool / WS client approach~~ **Decided: Vite + TypeScript, native `WebSocket`**
+  — see §4.
+- ~~Reverse proxy vs. direct port exposure~~ **Decided: nginx inside the `client` container**
+  proxies `/api` and `/ws` to `server`; the client itself never has an API base URL — see §4.
+  Verified end-to-end through `http://localhost` in the real docker-compose stack.
+- Exact JSON protocol schema and framing edge cases (max message size, encoding) — not
+  revisited beyond what's already implemented; document the as-built shape in `README.md`
+  rather than treating this as still-open.

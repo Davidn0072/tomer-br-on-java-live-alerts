@@ -56,13 +56,13 @@ services:
     networks:
       - live-alerts-net
 
-  # Placeholder container until the React client is implemented — see PLAN.md §4.
   client:
     build:
       context: ./client
     container_name: live-alerts-client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     ports:
       - "80:80"
     networks:

@@ -29,7 +29,9 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 - **Server framework:** **Spring Boot 3.3.x** (`web`, `websocket`, `data-jpa` starters).
 - **MSSQL:** official `mcr.microsoft.com/mssql/server` Linux image; schema created
   automatically on startup — no manual DB setup steps.
-- **Client:** React (build tool: see PLAN.md §8, currently leaning Vite).
+- **Client:** React + **Vite** + TypeScript. Native `WebSocket` (no library). No API base URL
+  anywhere — the client only ever calls relative paths; nginx (in the `client` container) and
+  Vite's dev-server proxy (for `npm run dev`) both forward `/api` and `/ws` to `server`.
 - **Orchestration:** Docker Compose, four services (`mssql`, `server`, `emulator`, `client`),
   reachable as a whole at `http://localhost`.
 - **TCP framing:** newline-delimited JSON. Message types at minimum: `Connect`, `Disconnect`,
@@ -61,10 +63,13 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 ## How to run (fill in as each piece lands)
 
-- `docker compose up` — starts the full stack. *(Currently: `mssql`, `server`, and `emulator`
-  are fully functional and verified end-to-end together — including restarting the `server`
-  container mid-run and watching the emulator reconnect and resume sending with zero manual
-  steps. `client` is still a placeholder container — see PLAN.md §7.)*
+- `docker compose up` — starts the full stack. *(Currently: all four services — `mssql`,
+  `server`, `emulator`, `client` — are fully functional and verified end-to-end together through
+  `http://localhost`: nginx proxies both `/api` and the `/ws` upgrade to `server`, and a raw WS
+  client receives the live alert the moment the emulator's message lands. Also verified
+  restarting `server` mid-run and watching the emulator reconnect and resume sending with zero
+  manual steps. Not yet verified by actually looking at it in a browser — no browser-automation
+  tool was available this session; that's still owed before calling this exercise done.)*
 - **Always smoke-test a finished component with the real `docker compose up`**, not just `mvn
   test`/`mvn verify`. Two Server bugs only surfaced this way: MSSQL's official image doesn't
   auto-create an app database (only `master` exists on first start), and `MessageCodec` was
@@ -81,7 +86,10 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
   environment", even though `docker` and `docker compose` work fine); Testcontainers **1.21.4**
   resolved it — keep `testcontainers.version` in `server/pom.xml` at or above that if bumping
   Docker Desktop causes this again.
-- React/Vitest, Playwright E2E: commands to be added here once each suite exists.
+- `cd client && npm test` — Vitest unit tests (API client, `useAlertSocket` reconnect behavior,
+  `AlertToast`, `MessageList`). `npm run build` type-checks and produces the production bundle;
+  `npm run dev` runs it locally against a `server` on `localhost:8080` via the Vite dev proxy.
+- Playwright E2E: commands to be added here once the suite exists.
 
 ## Required deliverables checklist (from `Developer_Exercise.md`)
 
