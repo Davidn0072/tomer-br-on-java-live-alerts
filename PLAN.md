@@ -316,7 +316,8 @@ single `docker compose up`.
 5. **Tests** — Java unit tests alongside server code; Vitest alongside client code; MSSQL
    integration test once persistence exists; Playwright E2E last, once all four containers work
    together and restart/reconnect behavior is implemented.
-6. **README + CLAUDE.md + session transcripts** — finalized once behavior and protocol are
+6. **README + CLAUDE.md + session transcripts** — DONE except session transcripts (a user
+   action via Claude Code's own export feature, still pending). `README.md` written once behavior and protocol are
    stable; commit history should already reflect incremental work across the areas above.
 
 ## 8. Open decisions to make before/at the start of implementation
