@@ -38,17 +38,21 @@ services:
     networks:
       - live-alerts-net
 
-  # Placeholder container until the emulator (Maven) is implemented — see PLAN.md §2.
   emulator:
     build:
       context: ./emulator
     container_name: live-alerts-emulator
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_HOST: server
       SERVER_TCP_PORT: "5000"
       EMULATOR_INTERVAL_MS: "10000"
+      EMULATOR_CLIENT_ID: emulator-1
+      EMULATOR_CONTROL_PORT: "9000"
+    ports:
+      - "9000:9000"
     networks:
       - live-alerts-net
 

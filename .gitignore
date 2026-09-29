@@ -3,6 +3,10 @@ target/
 *.class
 *.jar
 !.mvn/wrapper/maven-wrapper.jar
+dependency-reduced-pom.xml
+
+# Claude Code local tooling state
+.claude/
 
 # Node / React
 node_modules/

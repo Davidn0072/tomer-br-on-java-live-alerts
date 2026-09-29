@@ -47,10 +47,35 @@ implementation and documented in README, not fixed here.
 
 ---
 
-## 2. Emulator
+## 2. Emulator — DONE (implementation; README still pending, see §7)
 
 A standalone TCP client (Java, matching the server's runtime for protocol/DTO reuse, e.g. via
 a small shared module or duplicated POJOs — decide during implementation).
+
+**Decided: duplicated POJOs**, not a shared Maven module — `emulator/src/main/java/com/livealerts/emulator/protocol/`
+is a byte-for-byte copy of the server's protocol package (minus the one `@Component` annotation,
+since the emulator has no Spring context). A shared module would complicate each side's
+independent Docker build for little benefit at five small record classes.
+
+**Decided: manual trigger = a minimal HTTP control server**, using only the JDK's built-in
+`com.sun.net.httpserver.HttpServer` (no framework dependency): `POST /trigger` sends one
+`SendMessage` immediately, `GET /health` for readiness. Port via `EMULATOR_CONTROL_PORT`
+(default 9000, published in `docker-compose.yml`) — this is what Playwright E2E scenario 1 will
+call.
+
+No Spring Boot here (unlike the Server) — a TCP client with a scheduler and a two-endpoint HTTP
+control surface doesn't need it; plain Java + Jackson keeps the image small and the startup
+instant.
+
+Verified end-to-end against the real `server` + `mssql` containers:
+- Connects on startup, sends `Connect`, receives `Ack`.
+- `EMULATOR_INTERVAL_MS` periodic sends and `POST /trigger` manual sends both land in MSSQL and
+  are visible via `GET /api/messages`.
+- **Restart recovery, the exercise's core robustness requirement:** `docker restart
+  live-alerts-server` while the emulator is running — it logs `Connection refused` every 3s,
+  drops (logs, doesn't queue) any send attempted while down, and reconnects with a fresh
+  `Connect` the moment the server is reachable again, resuming periodic sends automatically.
+  Zero manual steps, exactly matching E2E scenario 2 in `Developer_Exercise.md`.
 
 **Components:**
 - **Connection manager** — opens/holds the TCP socket to the server, detects disconnects, and
@@ -290,7 +315,8 @@ single `docker compose up`.
   integration test. The server's own MSSQL-readiness wait is skipped: `docker-compose.yml`
   already gates `server` on `mssql`'s `service_healthy` condition, so no in-app retry loop is
   needed.
+- ~~Manual trigger~~ **Decided: `POST /trigger` on a JDK `HttpServer`** inside the emulator —
+  see §2.
 - Client build tool (Vite) and WS client approach (native `WebSocket` vs. a library).
 - Exact JSON protocol schema and framing edge cases (max message size, encoding).
-- How the emulator's "manual trigger" is exposed for E2E control.
 - Reverse proxy vs. direct port exposure for reaching the client/server at `http://localhost`.

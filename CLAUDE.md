@@ -61,10 +61,10 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 ## How to run (fill in as each piece lands)
 
-- `docker compose up` — starts the full stack. *(Currently: `mssql` and `server` are fully
-  functional and verified end-to-end — TCP → MSSQL → REST → WebSocket alert, all working
-  together in real containers. `emulator` and `client` are still placeholder containers — see
-  PLAN.md §7.)*
+- `docker compose up` — starts the full stack. *(Currently: `mssql`, `server`, and `emulator`
+  are fully functional and verified end-to-end together — including restarting the `server`
+  container mid-run and watching the emulator reconnect and resume sending with zero manual
+  steps. `client` is still a placeholder container — see PLAN.md §7.)*
 - **Always smoke-test a finished component with the real `docker compose up`**, not just `mvn
   test`/`mvn verify`. Two Server bugs only surfaced this way: MSSQL's official image doesn't
   auto-create an app database (only `master` exists on first start), and `MessageCodec` was
@@ -72,6 +72,8 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
   unit tests or Spring test slices (`@WebMvcTest`, `@DataJpaTest`) alone. See PLAN.md §3.
 - `cd server && mvn test` — fast JUnit unit tests (protocol codec, TCP server over real
   sockets). No Docker/DB required.
+- `cd emulator && mvn test` — fast JUnit unit tests (protocol codec, `ConnectionManager`
+  reconnect behavior over real sockets, `ControlServer` HTTP endpoints). No Docker required.
 - `cd server && mvn verify` — unit tests plus `MessageRepositoryIT`, the required MSSQL
   integration test (Testcontainers spins up a real `mssql` image). Requires a working Docker
   daemon. **Windows/Docker Desktop note:** Testcontainers 1.20.x fails to detect Docker Desktop
