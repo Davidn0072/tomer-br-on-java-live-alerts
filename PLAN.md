@@ -211,28 +211,39 @@ an actual browser (no browser-automation tool was available in this session) —
 
 ---
 
-## 5. Tests
+## 5. Tests — DONE
 
 Three suites, each owned by its respective stack but planned together here for coverage and
 sequencing.
 
-**Java (JUnit):**
-- Unit tests: TCP frame parsing/serialization, protocol message validation, malformed-JSON
-  handling, WS broadcast logic (mockable), REST controller logic.
-- Integration test(s): server + real MSSQL (via Testcontainers or the docker-compose MSSQL
-  instance) — verify a message written through the persistence layer is actually stored and
-  retrievable via REST.
+**Java (JUnit):** 27 tests in `server/` (protocol codec, TCP server over real sockets incl.
+robustness, REST controllers, WS broadcaster, persistence wiring) + the required MSSQL
+integration test (`MessageRepositoryIT`, Testcontainers, run via `mvn verify`); 19 tests in
+`emulator/` (protocol codec, `ConnectionManager` reconnect behavior, `ControlServer` HTTP). See
+§3/§2 for what each covers.
 
-**React (Vitest):**
-- Unit tests for the WS module (reconnect behavior with a mocked socket), the alert component,
-  and the message list component/data-fetch hook.
+**React (Vitest):** 14 tests in `client/` — the REST client, `useAlertSocket`'s connect/message/
+reconnect/cleanup behavior against a fake WebSocket, `AlertToast`, `MessageList`. See §4.
 
-**E2E (Playwright):**
-- Scenario 1: emulator sends a message (via its manual trigger) → alert appears in the browser.
-- Scenario 2: server container restarts → browser's WS reconnects automatically → next
-  emulator-sent message still produces an alert, with no manual browser action.
-- Both scenarios require orchestrating docker-compose (or an equivalent test harness) to
-  start/restart specific containers from the test runner.
+**E2E (Playwright, `e2e/`):** both required scenarios, run against the real four-container
+`docker-compose` stack (not mocks) and **passing**:
+- `alert-flow.spec.ts` — triggers the emulator's manual send, asserts the alert toast appears
+  and the message list grows.
+- `restart-recovery.spec.ts` — asserts the connection indicator is "Live", restarts the `server`
+  container (`docker compose restart server`), asserts the indicator goes to "Reconnecting…"
+  and back to "Live" with no page action, then triggers another send and asserts the alert still
+  arrives. ~2 minutes total (real Spring Boot/MSSQL restart, not simulated).
+
+**Found and fixed running these for real, not caught by any unit/component test:**
+- `workers: 1` in `playwright.config.ts` is load-bearing: the two specs share one live stack,
+  and running them in parallel workers meant `restart-recovery`'s server restart broke
+  `alert-flow`'s WebSocket connection mid-test.
+- All three Dockerfiles' `HEALTHCHECK` used `http://localhost/...`; in the `nginx:1.27-alpine`
+  image specifically, `localhost` resolved to `::1` while nginx only listened on IPv4, so
+  `wget` got "connection refused" every time and the `client` container was permanently
+  unhealthy under `docker compose up --wait`. Fixed by using `127.0.0.1` explicitly in all
+  three (`server`, `emulator`, `client`) Dockerfiles, even though only `client` was actually
+  broken — no reason to leave the same footgun in the other two.
 
 **Dependencies:**
 - Java unit tests can start as soon as protocol/parsing code exists in the **Server**.

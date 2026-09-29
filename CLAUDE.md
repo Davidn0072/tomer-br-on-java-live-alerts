@@ -19,6 +19,7 @@ React client, which reads message data through the server's REST API.
 server/      Java TCP server + REST API + WebSocket broadcaster + MSSQL persistence (Maven)
 emulator/    Java TCP client: manual + periodic message sending (Maven)
 client/      React web app: WebSocket alerts + REST reads
+e2e/         Playwright E2E suite, driving the real docker-compose stack
 docker-compose.yml   Orchestrates mssql, server, emulator, client
 claude-sessions/     Exported Claude Code session transcripts (required deliverable)
 ```
@@ -63,13 +64,8 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 ## How to run (fill in as each piece lands)
 
-- `docker compose up` — starts the full stack. *(Currently: all four services — `mssql`,
-  `server`, `emulator`, `client` — are fully functional and verified end-to-end together through
-  `http://localhost`: nginx proxies both `/api` and the `/ws` upgrade to `server`, and a raw WS
-  client receives the live alert the moment the emulator's message lands. Also verified
-  restarting `server` mid-run and watching the emulator reconnect and resume sending with zero
-  manual steps. Not yet verified by actually looking at it in a browser — no browser-automation
-  tool was available this session; that's still owed before calling this exercise done.)*
+- `docker compose up` — starts the full stack. All four services are implemented and verified,
+  including in an actual browser via Playwright (see below).
 - **Always smoke-test a finished component with the real `docker compose up`**, not just `mvn
   test`/`mvn verify`. Two Server bugs only surfaced this way: MSSQL's official image doesn't
   auto-create an app database (only `master` exists on first start), and `MessageCodec` was
@@ -89,7 +85,19 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 - `cd client && npm test` — Vitest unit tests (API client, `useAlertSocket` reconnect behavior,
   `AlertToast`, `MessageList`). `npm run build` type-checks and produces the production bundle;
   `npm run dev` runs it locally against a `server` on `localhost:8080` via the Vite dev proxy.
-- Playwright E2E: commands to be added here once the suite exists.
+- **Playwright E2E** (`e2e/`): first bring up the real stack — `docker compose up -d --build
+  --wait` from the repo root — then `cd e2e && npx playwright test` (or `npm run test:e2e`).
+  Both required scenarios pass against real containers: sending a message and seeing the alert,
+  and restarting `server` mid-run and confirming the browser reconnects and gets the next alert
+  with no manual step (`e2e/tests/restart-recovery.spec.ts`, ~2 minutes — a real Spring Boot/
+  MSSQL restart, not simulated). `workers: 1` in `playwright.config.ts` is required, not a
+  default: the specs share the one live stack, and running them in parallel let the restart
+  test's server restart break the other spec's WebSocket mid-test.
+- **Healthcheck gotcha:** all three Dockerfiles' `HEALTHCHECK` must use `http://127.0.0.1/...`,
+  not `http://localhost/...` — in `nginx:1.27-alpine` specifically, `localhost` resolved to
+  `::1` while nginx only listens on IPv4, so the healthcheck failed 100% of the time and
+  `docker compose up --wait` never returned. `server`'s and `emulator`'s (`eclipse-temurin:
+  17-jre-alpine`) healthchecks happened not to hit this, but were changed too for consistency.
 
 ## Required deliverables checklist (from `Developer_Exercise.md`)
 

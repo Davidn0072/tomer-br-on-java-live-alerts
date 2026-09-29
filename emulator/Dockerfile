@@ -14,6 +14,6 @@ COPY --from=build /build/target/emulator.jar app.jar
 EXPOSE 9000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
-    CMD wget -qO- http://localhost:9000/health || exit 1
+    CMD wget -qO- http://127.0.0.1:9000/health || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
