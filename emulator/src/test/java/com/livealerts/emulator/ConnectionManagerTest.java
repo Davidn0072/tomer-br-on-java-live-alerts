@@ -41,7 +41,7 @@ class ConnectionManagerTest {
         serverSocket = new ServerSocket(0);
         acceptOneConnectionAndCollectLines(serverSocket, receivedLines);
 
-        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test");
+        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test", 0);
         manager.start();
 
         String line = receivedLines.poll(5, TimeUnit.SECONDS);
@@ -54,7 +54,7 @@ class ConnectionManagerTest {
         serverSocket = new ServerSocket(0);
         acceptOneConnectionAndCollectLines(serverSocket, receivedLines);
 
-        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test");
+        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test", 0);
         manager.start();
         receivedLines.poll(5, TimeUnit.SECONDS); // the initial Connect
 
@@ -66,10 +66,48 @@ class ConnectionManagerTest {
 
     @Test
     void sendMessageWhileDisconnectedIsDroppedInsteadOfThrowing() {
-        manager = new ConnectionManager("localhost", 1, "emulator-test"); // nothing listens on port 1
+        manager = new ConnectionManager("localhost", 1, "emulator-test", 0); // nothing listens on port 1
 
         manager.start();
         manager.sendMessage("into the void"); // must not throw
+    }
+
+    @Test
+    void everyNthSendMessageIsSentAsClearScreenInstead() throws Exception {
+        BlockingQueue<String> receivedLines = new LinkedBlockingQueue<>();
+        serverSocket = new ServerSocket(0);
+        acceptOneConnectionAndCollectLines(serverSocket, receivedLines);
+
+        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test", 3);
+        manager.start();
+        receivedLines.poll(5, TimeUnit.SECONDS); // the initial Connect
+
+        manager.sendMessage("first");
+        manager.sendMessage("second");
+        manager.sendMessage("third");
+
+        assertThat(receivedLines.poll(5, TimeUnit.SECONDS)).contains("\"type\":\"SendMessage\"").contains("\"text\":\"first\"");
+        assertThat(receivedLines.poll(5, TimeUnit.SECONDS)).contains("\"type\":\"SendMessage\"").contains("\"text\":\"second\"");
+        assertThat(receivedLines.poll(5, TimeUnit.SECONDS))
+                .contains("\"type\":\"ClearScreen\"")
+                .contains("\"clientId\":\"emulator-test\"")
+                .doesNotContain("\"text\"");
+    }
+
+    @Test
+    void nonPositiveClearScreenEveryDisablesClearScreenEntirely() throws Exception {
+        BlockingQueue<String> receivedLines = new LinkedBlockingQueue<>();
+        serverSocket = new ServerSocket(0);
+        acceptOneConnectionAndCollectLines(serverSocket, receivedLines);
+
+        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test", 0);
+        manager.start();
+        receivedLines.poll(5, TimeUnit.SECONDS); // the initial Connect
+
+        for (int i = 0; i < 5; i++) {
+            manager.sendMessage("message #" + i);
+            assertThat(receivedLines.poll(5, TimeUnit.SECONDS)).contains("\"type\":\"SendMessage\"");
+        }
     }
 
     @Test
@@ -88,7 +126,7 @@ class ConnectionManagerTest {
         acceptThread.setDaemon(true);
         acceptThread.start();
 
-        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test");
+        manager = new ConnectionManager("localhost", serverSocket.getLocalPort(), "emulator-test", 0);
         manager.start();
 
         Socket first = acceptedSockets.poll(5, TimeUnit.SECONDS);

@@ -51,6 +51,7 @@ services:
       EMULATOR_INTERVAL_MS: "10000"
       EMULATOR_CLIENT_ID: emulator-1
       EMULATOR_CONTROL_PORT: "9000"
+      EMULATOR_CLEAR_SCREEN_EVERY: "5"
     ports:
       - "9000:9000"
     networks:

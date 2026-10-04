@@ -1,12 +1,15 @@
 package com.livealerts.emulator;
 
+import com.livealerts.emulator.protocol.ClearScreenMessage;
 import com.livealerts.emulator.protocol.ConnectMessage;
 import com.livealerts.emulator.protocol.DisconnectMessage;
 import com.livealerts.emulator.protocol.MessageCodec;
+import com.livealerts.emulator.protocol.ProtocolMessage;
 import com.livealerts.emulator.protocol.SendMessageMessage;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -16,6 +19,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * "recover from restarts" requirement. Callers just call {@link #sendMessage(String)}; if
  * nothing is connected right now, the message is dropped and logged rather than queued — the
  * next scheduled or manual trigger will succeed once reconnected.
+ *
+ * <p>Every {@code clearScreenEvery}th call to {@link #sendMessage(String)} — counting periodic
+ * and manual sends together — sends a {@code ClearScreen} instead of a {@code SendMessage}; see
+ * {@code CLEAR_SCREEN_FEATURE.md}. A non-positive {@code clearScreenEvery} disables this.
  */
 final class ConnectionManager {
 
@@ -24,15 +31,18 @@ final class ConnectionManager {
     private final String host;
     private final int port;
     private final String clientId;
+    private final int clearScreenEvery;
     private final MessageCodec codec = new MessageCodec();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<Connection> current = new AtomicReference<>();
+    private final AtomicInteger sendAttempts = new AtomicInteger();
     private Thread connectionThread;
 
-    ConnectionManager(String host, int port, String clientId) {
+    ConnectionManager(String host, int port, String clientId, int clearScreenEvery) {
         this.host = host;
         this.port = port;
         this.clientId = clientId;
+        this.clearScreenEvery = clearScreenEvery;
     }
 
     void start() {
@@ -58,12 +68,21 @@ final class ConnectionManager {
     }
 
     void sendMessage(String text) {
+        int attempt = sendAttempts.incrementAndGet();
+        ProtocolMessage outgoing = (clearScreenEvery > 0 && attempt % clearScreenEvery == 0)
+                ? new ClearScreenMessage(clientId)
+                : new SendMessageMessage(clientId, text);
+
         Connection connection = current.get();
         if (connection == null) {
-            Log.warn("Not connected, dropping message: " + text);
+            Log.warn("Not connected, dropping " + outgoing.type() + ": " + describe(outgoing));
             return;
         }
-        connection.send(new SendMessageMessage(clientId, text));
+        connection.send(outgoing);
+    }
+
+    private static String describe(ProtocolMessage message) {
+        return message instanceof SendMessageMessage sendMessage ? sendMessage.text() : "(no text)";
     }
 
     private void connectionLoop() {

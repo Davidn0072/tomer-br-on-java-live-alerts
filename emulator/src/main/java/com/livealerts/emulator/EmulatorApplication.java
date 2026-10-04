@@ -13,9 +13,11 @@ public final class EmulatorApplication {
         Log.info("Starting emulator: clientId=" + config.clientId()
                 + " server=" + config.serverHost() + ":" + config.serverPort()
                 + " intervalMs=" + config.intervalMs()
-                + " controlPort=" + config.controlPort());
+                + " controlPort=" + config.controlPort()
+                + " clearScreenEvery=" + config.clearScreenEvery());
 
-        ConnectionManager connectionManager = new ConnectionManager(config.serverHost(), config.serverPort(), config.clientId());
+        ConnectionManager connectionManager = new ConnectionManager(
+                config.serverHost(), config.serverPort(), config.clientId(), config.clearScreenEvery());
         connectionManager.start();
 
         AtomicInteger messageCounter = new AtomicInteger();
