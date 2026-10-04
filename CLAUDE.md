@@ -103,7 +103,7 @@ claude-sessions/     Exported Claude Code session transcripts (required delivera
 
 - [x] `PLAN.md` — work plan
 - [x] `CLAUDE.md` — this file
-- [ ] `claude-sessions/` — 2–3 exported session transcripts (add near the end of the exercise)
+- [x] `claude-sessions/` — 2–3 exported session transcripts (add near the end of the exercise)
 - [x] `README.md` — use cases, architecture diagram, run/test instructions, protocol spec,
       design decisions
 - [ ] Working `docker compose up` from a clean clone
