@@ -37,6 +37,15 @@ class MessageCodecTest {
     }
 
     @Test
+    void roundTripsClearScreenMessage() throws MalformedMessageException {
+        ClearScreenMessage original = new ClearScreenMessage("emulator-1");
+
+        ProtocolMessage decoded = codec.decode(codec.encode(original));
+
+        assertThat(decoded).isEqualTo(original);
+    }
+
+    @Test
     void roundTripsAckMessage() throws MalformedMessageException {
         AckMessage original = new AckMessage(SendMessageMessage.TYPE);
 

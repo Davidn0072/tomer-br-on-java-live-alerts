@@ -12,11 +12,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(value = ConnectMessage.class, name = ConnectMessage.TYPE),
         @JsonSubTypes.Type(value = DisconnectMessage.class, name = DisconnectMessage.TYPE),
         @JsonSubTypes.Type(value = SendMessageMessage.class, name = SendMessageMessage.TYPE),
+        @JsonSubTypes.Type(value = ClearScreenMessage.class, name = ClearScreenMessage.TYPE),
         @JsonSubTypes.Type(value = AckMessage.class, name = AckMessage.TYPE),
         @JsonSubTypes.Type(value = ErrorMessage.class, name = ErrorMessage.TYPE),
 })
 public sealed interface ProtocolMessage
-        permits ConnectMessage, DisconnectMessage, SendMessageMessage, AckMessage, ErrorMessage {
+        permits ConnectMessage, DisconnectMessage, SendMessageMessage, ClearScreenMessage, AckMessage, ErrorMessage {
 
     String type();
 }
