@@ -354,3 +354,43 @@ single `docker compose up`.
 - Exact JSON protocol schema and framing edge cases (max message size, encoding) — not
   revisited beyond what's already implemented; document the as-built shape in `README.md`
   rather than treating this as still-open.
+
+## 9. "Clear screen" feature — DONE (added after the initial build)
+
+A new requirement added after the system above was already complete and verified: every
+`EMULATOR_CLEAR_SCREEN_EVERY`th message (periodic and manual combined, default 5, configurable),
+the emulator sends a `ClearScreen` message instead of a `SendMessage`; the server persists it;
+every connected browser clears its message list. Full design (including the three decisions
+confirmed with the repo owner before any code was written — counting scope, refresh semantics,
+and making the threshold configurable) is in `CLEAR_SCREEN_FEATURE.md`; the as-built protocol
+shape is in `README.md`'s "Protocol" section.
+
+Implemented and verified end to end, one logical commit per step:
+1. **Protocol** — `ClearScreenMessage` added to both `server/` and `emulator/`'s protocol
+   packages (duplicated, same as every other message type — see §2/§8).
+2. **Server** — `ClientHandler` dispatches and acks it; `MessageReceivedListener` widened from
+   `SendMessageMessage` to `ProtocolMessage` so one listener covers both persistable types;
+   `StoredMessage` gained a `type` column (plain string, not an enum, matching every other
+   `type` field in this codebase) with `text` now nullable; `MessageResponse` exposes `type`
+   over REST. Verified with `mvn verify` against a real MSSQL instance (Testcontainers) — the
+   new column is added automatically by `ddl-auto: update`, same as every other schema change so
+   far, and a `ClearScreen` row with null text round-trips correctly.
+3. **Emulator** — `ConnectionManager` counts every `sendMessage()` call and substitutes a
+   `ClearScreen` every Nth attempt; threshold read from `EMULATOR_CLEAR_SCREEN_EVERY` via
+   `EmulatorConfig`, wired into `docker-compose.yml`.
+4. **Client** — `StoredMessage.type` added; `AlertToast` shows "Screen was cleared" instead of
+   its normal content; `App.tsx` empties its list live on a `ClearScreen` alert and, on initial
+   load, only shows messages after the most recent `ClearScreen` in history (so a reload matches
+   what a tab left open the whole time would show).
+5. **E2E** — `clear-screen.spec.ts` restarts the `emulator` container first (the send counter
+   lives only in its process memory, so a restart gives the test a known-zero starting point
+   instead of depending on how many sends earlier specs already caused), triggers the manual
+   endpoint `EMULATOR_CLEAR_SCREEN_EVERY` times, and asserts the toast and the emptied list.
+   Passes alongside the two original scenarios (3 passed, ~1.1 min) against the real stack.
+
+**Lesson repeated from §3:** smoke-testing the real `docker compose up` after this feature's
+code was done (not just its unit tests) caught a real, if unrelated, flake — the `server`
+container took 64s to boot on one run (slower than usual) and briefly tripped the
+`docker compose up --wait` healthcheck gate before settling healthy a moment later. Not a code
+regression; resolved by re-running `docker compose up -d --wait` without `--build` once images
+were already cached.

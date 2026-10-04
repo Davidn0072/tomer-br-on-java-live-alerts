@@ -97,6 +97,11 @@ Both scenarios required by the exercise are covered and pass against real contai
   reconnects and receives the next alert with no manual step (~2 minutes: a real Spring Boot /
   MSSQL restart, not simulated).
 
+A third, later-added scenario covers the "clear screen" feature (see "Protocol" below):
+- `clear-screen.spec.ts` — restarts the `emulator` container for a known-zero send counter,
+  triggers its manual endpoint `EMULATOR_CLEAR_SCREEN_EVERY` times, and asserts the browser shows
+  a "Screen was cleared" toast and empties its message list on the last one.
+
 `playwright.config.ts` runs with `workers: 1` — both specs share the one live stack, and running
 them in parallel let the restart test's server restart break the other spec's WebSocket mid-test.
 
@@ -125,6 +130,13 @@ Every message is a JSON object with a `type` discriminator. Client → server:
 {"type":"SendMessage","clientId":"emulator-1","text":"Hello from the emulator"}
 ```
 
+**`ClearScreen`** — sent by the emulator every `EMULATOR_CLEAR_SCREEN_EVERY`th send (periodic and
+manual combined, default 5, configurable, `<= 0` disables it) instead of a `SendMessage`. Carries
+no body; persisted like any other message, and tells every connected browser to clear its list.
+```json
+{"type":"ClearScreen","clientId":"emulator-1"}
+```
+
 **`Disconnect`** — sent right before the client closes the socket on purpose (not sent on an
 abrupt drop, by definition).
 ```json
@@ -146,8 +158,11 @@ Server → client, in reply to each line above:
 
 ### WebSocket (server → browser), `/ws/alerts`
 
-Server push only, no messages expected from the client. One frame per newly persisted message,
-carrying no body — the browser fetches the actual content over REST:
+Server push only, no messages expected from the client. One frame per newly persisted message —
+`SendMessage` or `ClearScreen` alike — carrying no body; the browser fetches the actual row over
+REST and only then looks at *that* row's `type` to decide whether to append to its list or clear
+it, rather than teaching the WebSocket wire format a second shape for one extra bit of
+information REST already carries:
 
 ```json
 {"type":"NewMessage","id":42,"receivedAt":"2026-09-29T14:03:21.512Z"}
@@ -167,9 +182,11 @@ Read-only; the client never talks to MSSQL directly.
 - `GET /api/health` — liveness check, used by the docker-compose healthcheck and E2E readiness
   waits.
 
-`GET /api/messages` / `GET /api/messages/{id}` response shape:
+`GET /api/messages` / `GET /api/messages/{id}` response shape — `type` is `"SendMessage"` or
+`"ClearScreen"`, and `text` is `null` on a `ClearScreen` row:
 ```json
-{"id":42,"clientId":"emulator-1","text":"Hello from the emulator","receivedAt":"2026-09-29T14:03:21.512Z"}
+{"id":42,"clientId":"emulator-1","text":"Hello from the emulator","receivedAt":"2026-09-29T14:03:21.512Z","type":"SendMessage"}
+{"id":43,"clientId":"emulator-1","text":null,"receivedAt":"2026-09-29T14:03:31.512Z","type":"ClearScreen"}
 ```
 
 ### Emulator control API (test/manual trigger), `emulator:9000`
@@ -191,8 +208,15 @@ on demand from outside the container (used by Playwright's `alert-flow` scenario
   `com.sun.net.httpserver.HttpServer` for the control API) keeps the image small and startup
   instant.
 - **Duplicated protocol POJOs between server and emulator**, not a shared Maven module — the
-  protocol is five small records; a shared module would complicate each side's independent
+  protocol is six small records; a shared module would complicate each side's independent
   Docker build for little benefit at this size.
+- **"Clear screen" persisted as a `type` column on the existing `messages` table**, not a
+  separate entity/table — it's one more small, nullable-text row in the same ordered feed that
+  `GET /api/messages` and the client's rendering already assume, not a new relationship. The
+  5-send threshold is configurable (`EMULATOR_CLEAR_SCREEN_EVERY`, counting periodic and manual
+  sends together) rather than hardcoded, and a page reload only shows messages after the most
+  recent clear in history, so it matches what a tab left open the whole time would show. Full
+  rationale in `CLEAR_SCREEN_FEATURE.md`.
 - **Hibernate `ddl-auto: update`**, not Flyway/Liquibase — a single-table schema doesn't warrant
   a migration tool for a 3-day exercise, and `update` never drops data, so messages survive a
   server restart.

@@ -1,7 +1,8 @@
 # Feature plan — "Clear screen" message
 
-**Status: plan only — not approved, not implemented.** This document proposes the design and
-build order for a new requirement: every 5th message the emulator sends, it sends a special
+**Status: implemented and verified end to end** (one commit per step below, plus a real
+`docker compose up` + Playwright run — see `PLAN.md` §9 for the completed build log). This
+document is kept as the design record: every 5th message the emulator sends, it sends a special
 "clear screen" message instead of a normal one; the server persists it like any other message;
 the browser, on receiving it, clears its currently displayed message list.
 
