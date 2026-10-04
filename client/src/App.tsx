@@ -6,6 +6,17 @@ import { MessageList } from './components/MessageList';
 import { useAlertSocket } from './hooks/useAlertSocket';
 import type { NewMessageAlert, StoredMessage } from './types';
 
+/**
+ * `messages` is newest-first. On a fresh load, only the SendMessage rows after the most recent
+ * ClearScreen should render, so a page reload shows the same thing a tab left open would —
+ * see CLEAR_SCREEN_FEATURE.md's confirmed refresh semantics.
+ */
+function visibleAfterLastClearScreen(messages: StoredMessage[]): StoredMessage[] {
+  const lastClearIndex = messages.findIndex((message) => message.type === 'ClearScreen');
+  const afterClear = lastClearIndex === -1 ? messages : messages.slice(0, lastClearIndex);
+  return afterClear.filter((message) => message.type !== 'ClearScreen');
+}
+
 export default function App() {
   const [messages, setMessages] = useState<StoredMessage[]>([]);
   const [activeAlert, setActiveAlert] = useState<StoredMessage | null>(null);
@@ -13,14 +24,18 @@ export default function App() {
 
   useEffect(() => {
     fetchMessages()
-      .then(setMessages)
+      .then((all) => setMessages(visibleAfterLastClearScreen(all)))
       .catch(() => setLoadError('Could not load messages.'));
   }, []);
 
   const handleAlert = useCallback((alert: NewMessageAlert) => {
     fetchMessageById(alert.id)
       .then((message) => {
-        setMessages((current) => (current.some((m) => m.id === message.id) ? current : [message, ...current]));
+        if (message.type === 'ClearScreen') {
+          setMessages([]);
+        } else {
+          setMessages((current) => (current.some((m) => m.id === message.id) ? current : [message, ...current]));
+        }
         setActiveAlert(message);
       })
       .catch(() => {

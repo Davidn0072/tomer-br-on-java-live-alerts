@@ -7,7 +7,9 @@ describe('messages API client', () => {
   });
 
   it('fetchMessages returns the parsed JSON body on success', async () => {
-    const payload = [{ id: 1, clientId: 'emulator-1', text: 'hi', receivedAt: '2026-01-01T00:00:00Z' }];
+    const payload = [
+      { id: 1, clientId: 'emulator-1', text: 'hi', receivedAt: '2026-01-01T00:00:00Z', type: 'SendMessage' },
+    ];
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) }),
@@ -24,7 +26,7 @@ describe('messages API client', () => {
   });
 
   it('fetchMessageById requests the specific message by id', async () => {
-    const payload = { id: 42, clientId: 'emulator-1', text: 'hi', receivedAt: '2026-01-01T00:00:00Z' };
+    const payload = { id: 42, clientId: 'emulator-1', text: 'hi', receivedAt: '2026-01-01T00:00:00Z', type: 'SendMessage' };
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(payload) }),

@@ -13,8 +13,8 @@ describe('MessageList', () => {
     render(
       <MessageList
         messages={[
-          { id: 1, clientId: 'emulator-1', text: 'hello', receivedAt: '2026-01-01T00:00:00Z' },
-          { id: 2, clientId: 'emulator-2', text: 'world', receivedAt: '2026-01-01T00:01:00Z' },
+          { id: 1, clientId: 'emulator-1', text: 'hello', receivedAt: '2026-01-01T00:00:00Z', type: 'SendMessage' },
+          { id: 2, clientId: 'emulator-2', text: 'world', receivedAt: '2026-01-01T00:01:00Z', type: 'SendMessage' },
         ]}
       />,
     );

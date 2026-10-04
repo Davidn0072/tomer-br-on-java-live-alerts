@@ -16,8 +16,14 @@ export function AlertToast({ message, onDismiss }: AlertToastProps) {
 
   return (
     <div className="alert-toast" role="alert">
-      <strong>New message from {message.clientId}</strong>
-      <p>{message.text}</p>
+      {message.type === 'ClearScreen' ? (
+        <strong>Screen was cleared</strong>
+      ) : (
+        <>
+          <strong>New message from {message.clientId}</strong>
+          <p>{message.text}</p>
+        </>
+      )}
       <button type="button" onClick={onDismiss} aria-label="Dismiss">
         ×
       </button>

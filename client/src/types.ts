@@ -1,8 +1,9 @@
 export interface StoredMessage {
   id: number;
   clientId: string;
-  text: string;
+  text: string | null;
   receivedAt: string;
+  type: 'SendMessage' | 'ClearScreen';
 }
 
 export interface NewMessageAlert {
