@@ -1,6 +1,8 @@
 package com.livealerts.server.tcp;
 
+import com.livealerts.server.protocol.ClearScreenMessage;
 import com.livealerts.server.protocol.MessageCodec;
+import com.livealerts.server.protocol.ProtocolMessage;
 import com.livealerts.server.protocol.SendMessageMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +28,7 @@ class TcpServerTest {
 
     private static final int SOCKET_TIMEOUT_MS = 2000;
 
-    private final List<SendMessageMessage> receivedMessages = new CopyOnWriteArrayList<>();
+    private final List<ProtocolMessage> receivedMessages = new CopyOnWriteArrayList<>();
     private TcpServer server;
 
     @BeforeEach
@@ -54,6 +56,18 @@ class TcpServerTest {
 
         assertThat(receivedMessages)
                 .containsExactly(new SendMessageMessage("emulator-1", "hello"));
+    }
+
+    @Test
+    void clearScreenMessageIsAckedAndDeliveredToListener() throws IOException {
+        try (Socket socket = connect()) {
+            BufferedReader in = reader(socket);
+
+            send(socket, "{\"type\":\"ClearScreen\",\"clientId\":\"emulator-1\"}");
+            assertThat(in.readLine()).isEqualTo("{\"type\":\"Ack\",\"forType\":\"ClearScreen\"}");
+        }
+
+        assertThat(receivedMessages).containsExactly(new ClearScreenMessage("emulator-1"));
     }
 
     @Test

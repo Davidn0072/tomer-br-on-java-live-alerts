@@ -1,5 +1,6 @@
 package com.livealerts.server.storage;
 
+import com.livealerts.server.protocol.ClearScreenMessage;
 import com.livealerts.server.protocol.SendMessageMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -27,6 +28,21 @@ class PersistingMessageReceivedListenerTest {
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getClientId()).isEqualTo("emulator-1");
         assertThat(captor.getValue().getText()).isEqualTo("hello");
+
+        verify(persistedListener).onMessagePersisted(captor.getValue());
+    }
+
+    @Test
+    void savesAClearScreenMessageWithNoTextAndTheClearScreenType() {
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        listener.onMessageReceived(new ClearScreenMessage("emulator-1"));
+
+        ArgumentCaptor<StoredMessage> captor = ArgumentCaptor.forClass(StoredMessage.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getClientId()).isEqualTo("emulator-1");
+        assertThat(captor.getValue().getText()).isNull();
+        assertThat(captor.getValue().getType()).isEqualTo(ClearScreenMessage.TYPE);
 
         verify(persistedListener).onMessagePersisted(captor.getValue());
     }

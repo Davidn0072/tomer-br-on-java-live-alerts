@@ -1,5 +1,7 @@
 package com.livealerts.server.api;
 
+import com.livealerts.server.protocol.ClearScreenMessage;
+import com.livealerts.server.protocol.SendMessageMessage;
 import com.livealerts.server.storage.MessageRepository;
 import com.livealerts.server.storage.StoredMessage;
 import org.junit.jupiter.api.Test;
@@ -61,7 +63,8 @@ class MessageControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(42))
                 .andExpect(jsonPath("$.clientId").value("emulator-1"))
-                .andExpect(jsonPath("$.text").value("hello"));
+                .andExpect(jsonPath("$.text").value("hello"))
+                .andExpect(jsonPath("$.type").value(SendMessageMessage.TYPE));
     }
 
     @Test
@@ -72,12 +75,29 @@ class MessageControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void getMessageReturnsClearScreenTypeWithNoTextWhenFound() throws Exception {
+        StoredMessage message = mock(StoredMessage.class);
+        when(message.getId()).thenReturn(7L);
+        when(message.getClientId()).thenReturn("emulator-1");
+        when(message.getText()).thenReturn(null);
+        when(message.getReceivedAt()).thenReturn(Instant.parse("2026-01-01T00:00:00Z"));
+        when(message.getType()).thenReturn(ClearScreenMessage.TYPE);
+        when(repository.findById(7L)).thenReturn(Optional.of(message));
+
+        mockMvc.perform(get("/api/messages/{id}", 7))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.type").value(ClearScreenMessage.TYPE));
+    }
+
     private static StoredMessage messageWithId(long id, String clientId, String text, Instant receivedAt) {
         StoredMessage message = mock(StoredMessage.class);
         when(message.getId()).thenReturn(id);
         when(message.getClientId()).thenReturn(clientId);
         when(message.getText()).thenReturn(text);
         when(message.getReceivedAt()).thenReturn(receivedAt);
+        when(message.getType()).thenReturn(SendMessageMessage.TYPE);
         return message;
     }
 }

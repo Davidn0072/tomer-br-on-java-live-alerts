@@ -1,5 +1,6 @@
 package com.livealerts.server.storage;
 
+import com.livealerts.server.protocol.ClearScreenMessage;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -54,6 +55,18 @@ class MessageRepositoryIT {
         assertThat(found.get().getClientId()).isEqualTo("emulator-1");
         assertThat(found.get().getText()).isEqualTo("hello from the integration test");
         assertThat(found.get().getReceivedAt()).isNotNull();
+    }
+
+    @Test
+    void savedClearScreenMessageHasNoTextAndTheClearScreenType() {
+        StoredMessage saved = repository.save(
+                new StoredMessage("emulator-1", null, Instant.now(), ClearScreenMessage.TYPE));
+
+        Optional<StoredMessage> found = repository.findById(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getText()).isNull();
+        assertThat(found.get().getType()).isEqualTo(ClearScreenMessage.TYPE);
     }
 
     @Test

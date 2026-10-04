@@ -1,6 +1,7 @@
 package com.livealerts.server.tcp;
 
 import com.livealerts.server.protocol.AckMessage;
+import com.livealerts.server.protocol.ClearScreenMessage;
 import com.livealerts.server.protocol.ConnectMessage;
 import com.livealerts.server.protocol.DisconnectMessage;
 import com.livealerts.server.protocol.ErrorMessage;
@@ -81,6 +82,10 @@ final class ClientHandler implements Runnable {
             log.info("Message from {}: {}", sendMessage.clientId(), sendMessage.text());
             listener.onMessageReceived(sendMessage);
             send(out, new AckMessage(SendMessageMessage.TYPE));
+        } else if (message instanceof ClearScreenMessage clearScreen) {
+            log.info("Clear-screen requested by {}", clearScreen.clientId());
+            listener.onMessageReceived(clearScreen);
+            send(out, new AckMessage(ClearScreenMessage.TYPE));
         } else {
             log.info("Unexpected message type from client: {}", message.type());
             send(out, new ErrorMessage("Unexpected message type from client: " + message.type()));
